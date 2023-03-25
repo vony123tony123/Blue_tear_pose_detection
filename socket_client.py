@@ -42,14 +42,13 @@ def test_connect():
   print("Testing Connect...")
   while True:
     try:
-        is_connect = False
+        s.settimeout(0.01)
         s.connect((HOST, PORT))
-        s.settimeout(1)
         is_connect = True
         print("Testing Connect Success")
         break
     except Exception as e:
-      print("Testing Connect Failed")
+      print(e)
       time.sleep(2)
 
 def detect_frame():
@@ -79,10 +78,13 @@ def detect_frame():
           if pose_idx is None:
               pose_idx = 0
 
-          if is_connect :
-            s.sendall(bytes(pose_dict[pose_idx], encoding='utf-8'), )
-            data = s.recv(1024)
-            print('Received', repr(data))
+          try:
+            if is_connect :
+              s.sendall(bytes(pose_dict[pose_idx], encoding='utf-8'), )
+              data = s.recv(1024)
+              print('Received', repr(data))
+          except Exception as e:
+            print(e)
           
           image = draw_landmarks(image, results, mp_holistic, mp_drawing, mp_drawing_styles)
           image = cv2.flip(image, 1)
@@ -96,11 +98,6 @@ def detect_frame():
               break    # 按下 q 鍵停止
         except Exception as e:
           print(e)
-          s.close()
-          b = threading.Thread(target=test_connect)
-          b.daemon = True
-          b.start()
-
 
 
 a = threading.Thread(target=get_frame)
