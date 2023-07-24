@@ -8,7 +8,7 @@ import socket
 
 mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
-mp_holistic = mp.solutions.holistic
+mp_hands = mp.solutions.hands
 
 global_frame = ""
 lock = threading.Lock()
@@ -32,7 +32,7 @@ def get_frame():
     lock.acquire()
     global_frame = frame.copy()
     lock.release()
-    cv2.imshow("camera", frame)
+    # cv2.imshow("camera", frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
       break
   cap.release()
@@ -53,46 +53,49 @@ def test_connect():
 
 def detect_frame():
     # For webcam input:
-    with mp_holistic.Holistic(
-      static_image_mode=False,
-      min_detection_confidence=0.5,
-      min_tracking_confidence=0.5) as holistic:
+    with mp_hands.Hands(
+        min_detection_confidence=0.5,
+        min_tracking_confidence=0.5) as hands:
       while True:
+        pose = "noPose"
         try:
           lock.acquire()
           image = global_frame.copy()
+          width, height = image.shape[1], image.shape[0]
           lock.release()
 
           # To improve performance, optionally mark the image as not writeable to
           # pass by reference.
           image.flags.writeable = False
           image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-          results = holistic.process(image)
+          results = hands.process(image)
 
           # Draw landmark annotation on the image.
           image.flags.writeable = True
           image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
-          pose_idx = classify_pose(results, image)
-
-          if pose_idx is None:
-              pose_idx = 0
-
+          if results.multi_hand_landmarks:
+                finger_points = []
+                hand_landmark = next(iter(results.multi_hand_landmarks))
+                mp_drawing.draw_landmarks(image, hand_landmark, mp_hands.HAND_CONNECTIONS)
+                for i in hand_landmark.landmark:
+                    i.x = i.x * width
+                    i.y = i.y * height
+                if hand_landmark.landmark:
+                    angle_list = cal_hand_angles(hand_landmark.landmark)
+                    pose = pose_detect(angle_list)
+                    print(pose)
           try:
             if is_connect :
-              s.sendall(bytes(pose_dict[pose_idx], encoding='utf-8'), )
+              s.sendall(bytes(pose, encoding='utf-8'), )
               data = s.recv(1024)
               print('Received', repr(data))
           except Exception as e:
             print(e)
-          
-          image = draw_landmarks(image, results, mp_holistic, mp_drawing, mp_drawing_styles)
+
           image = cv2.flip(image, 1)
-          if pose_idx != None:
-            cv2.putText(image, pose_dict[pose_idx], (10,40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-          else:
-            cv2.putText(image, pose_dict[0], (10,40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-          cv2.imshow('MediaPipe Holistic', image)
+          cv2.putText(image, pose, (10,40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+          cv2.imshow('MediaPipe hands', image)
          
           if cv2.waitKey(1) == ord('q'):
               break    # 按下 q 鍵停止
