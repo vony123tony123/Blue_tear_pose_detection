@@ -1,9 +1,18 @@
+#-*-coding:utf-8-*- 
 from pose_detect import *
 import threading
 import cv2
 import os
 import time
 import socket
+import logging
+import traceback
+
+logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a+',
+  format='[%(asctime)s %(levelname)-8s %(levelno)s] %(message)s',
+  datefmt='%Y%m%d %H:%M:%S',
+  encoding='utf-8'
+  )
 
 global_frame = ""
 lock = threading.Lock()
@@ -35,6 +44,7 @@ def get_frame():
 def test_connect():
   global is_connect
   print("Testing Connect...")
+  logging.info('Testing Connect...')
   while True:
     try:
         is_connect = False
@@ -42,16 +52,24 @@ def test_connect():
         s.connect((HOST, PORT))
         is_connect = True
         print("Testing Connect Success")
+        logging.info('Testing Connect Success')
         break
     except socket.timeout as e:
-      print("Testing Connect Failed:", e)
+      print("Testing Connect Timeout:", e)
+      logging.warning("Testing Connect Timeout: " + str(e))
       time.sleep(2)
+    except Exception as e:
+      print(e)
+      logging.error("Testing Connect Failed: " + str(e))
+      if str(e) == "[WinError 10056] 對一個已連線的通訊端發出連線要求。":
+        is_connect = True
+      break
 
 def detect_frame():
     # For webcam input:
-    while True:
-      pose = "noPose"
-      try:
+    try:
+      while True:
+        pose = "noPose"
         lock.acquire()
         image = global_frame.copy()
         lock.release()
@@ -66,7 +84,12 @@ def detect_frame():
             data = s.recv(1024)
             # print('Received', repr(data))
         except Exception as e:
-          print(e)
+          error_str = traceback.format_exc()
+          print(error_str)
+          logging.error("send message Failed: " + str(error_str))
+          if str(e) == "[WinError 10054] 遠端主機已強制關閉一個現存的連線。":
+            os._exit(0)
+
 
         image = cv2.flip(image, 1)
         # cv2.putText(image, pose, (10,40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
@@ -74,8 +97,12 @@ def detect_frame():
        
         if cv2.waitKey(1) == ord('q'):
             break    # 按下 q 鍵停止
-      except Exception as e:
-        print(e)
+    except Exception as e:
+      error_str = traceback.format_exc()
+      print(error_str)
+      logging.error("detect_frame Failed: " + str(error_str))
+    finally:
+      s.close()
 
 
 a = threading.Thread(target=get_frame)

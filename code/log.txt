@@ -1,0 +1,11 @@
+[20230803 17:18:10 INFO     20] Testing Connect...
+[20230803 17:18:11 WARNING  30] Testing Connect Timeout: timed out
+[20230803 17:18:14 WARNING  30] Testing Connect Timeout: timed out
+[20230803 17:18:17 WARNING  30] Testing Connect Timeout: timed out
+[20230803 17:18:20 WARNING  30] Testing Connect Timeout: timed out
+[20230803 17:18:22 ERROR    40] Testing Connect Failed: [WinError 10056] 對一個已連線的通訊端發出連線要求。
+[20230803 17:21:37 ERROR    40] send message Failed: Traceback (most recent call last):
+  File "D:\Project\Blue_tear\blue_tear_mediapipe_version\Blue_tear_pose_detection\code\socket_client.py", line 84, in detect_frame
+    data = s.recv(1024)
+ConnectionResetError: [WinError 10054] 遠端主機已強制關閉一個現存的連線。
+
