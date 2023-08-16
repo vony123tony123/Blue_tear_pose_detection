@@ -46,64 +46,69 @@ def test_connect():
   print("Testing Connect...")
   logging.info('Testing Connect...')
   while True:
-    try:
-        is_connect = False
-        s.settimeout(1)
-        s.connect((HOST, PORT))
-        is_connect = True
-        print("Testing Connect Success")
-        logging.info('Testing Connect Success')
-        break
-    except socket.timeout as e:
-      print("Testing Connect Timeout:", e)
-      logging.warning("Testing Connect Timeout: " + str(e))
-      time.sleep(2)
-    except Exception as e:
-      print(e)
-      logging.error("Testing Connect Failed: " + str(e))
-      if str(e) == "[WinError 10056] 對一個已連線的通訊端發出連線要求。":
-        is_connect = True
-      break
-
+    while not is_connect:
+      try:
+          s.settimeout(1)
+          s.connect((HOST, PORT))
+          is_connect = True
+          print("Testing Connect Success")
+          logging.info('Testing Connect Success')
+      except socket.timeout as e:
+        print("Testing Connect Timeout:", e)
+        logging.warning("Testing Connect Timeout: " + str(e))
+        time.sleep(2)
+      except WindowsError as e:
+        print(e)
+        logging.error("Testing Connect WindowsError: " + str(e))
+        if e.winerror == 10056:
+          is_connect = True
+      except Exception as e:
+        print(e)
+        logging.error("Testing Connect Failed: " + str(e))
+    time.sleep(5)
+        
 def detect_frame():
+    global is_connect, s, global_frame
     # For webcam input:
-    try:
-      while True:
+    while True:
+      try:
         pose = "noPose"
         lock.acquire()
         image = global_frame.copy()
         lock.release()
 
         pose, hand_landmark = hands_detect(image)
-        print(pose)
         if hand_landmark:
           image = draw_hand_landmarks(image, hand_landmark)
+        
         try:
           if is_connect :
             s.sendall(bytes(pose, encoding='utf-8'), )
             data = s.recv(1024)
             # print('Received', repr(data))
+        except WindowsError as e:
+          print(str(e))
+          logging.error("socket connect Failed: " + str(e))
+          is_connect = False
+          s.close()
+          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         except Exception as e:
           error_str = traceback.format_exc()
           print(error_str)
           logging.error("send message Failed: " + str(error_str))
-          if str(e) == "[WinError 10054] 遠端主機已強制關閉一個現存的連線。":
-            os._exit(0)
-
 
         image = cv2.flip(image, 1)
-        # cv2.putText(image, pose, (10,40),cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
         cv2.imshow('MediaPipe hands', image)
        
         if cv2.waitKey(1) == ord('q'):
             break    # 按下 q 鍵停止
-    except Exception as e:
-      error_str = traceback.format_exc()
-      print(error_str)
-      logging.error("detect_frame Failed: " + str(error_str))
-    finally:
-      s.close()
+        print(pose)
 
+      except Exception as e:
+        error_str = traceback.format_exc()
+        print(error_str)
+        logging.error("detect_frame Failed: " + str(error_str))
+        lock.release()
 
 a = threading.Thread(target=get_frame)
 a.daemon=True
