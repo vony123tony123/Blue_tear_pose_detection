@@ -74,7 +74,12 @@ def detect_frame():
       try:
         pose = "noPose"
         lock.acquire()
-        image = global_frame.copy()
+        try:
+          image = global_frame.copy()
+        except:
+          error_str = traceback.format_exc()
+          print(error_str)
+          logging.error("detect_frame Failed: " + str(error_str))
         lock.release()
 
         pose, hand_landmark = hands_detect(image)
@@ -108,7 +113,6 @@ def detect_frame():
         error_str = traceback.format_exc()
         print(error_str)
         logging.error("detect_frame Failed: " + str(error_str))
-        lock.release()
 
 a = threading.Thread(target=get_frame)
 a.daemon=True
