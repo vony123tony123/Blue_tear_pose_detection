@@ -22,8 +22,7 @@ Install project with mediapipe
     6. Pray: 雙手合十置於胸前，誠心祈禱。
     7. WindForward: 舉起雙手置於頭的左右
 ## Demo
-
-Insert gif or link to demo
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/FBhia4bdPUk/0.jpg)](https://www.youtube.com/watch?v=FBhia4bdPUk)
 
 
 ## Full Project Link
