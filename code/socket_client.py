@@ -24,9 +24,17 @@ PORT = 11000
 is_connect = False
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+
+def read_camera_setting(filename):
+  with open(filename, 'r') as file:
+    return int(file.read().strip())
+
 def get_frame():
   global global_frame
-  cap = cv2.VideoCapture(0)
+  filename = 'camera_setting.txt'
+  camera_index = read_camera_setting(filename)
+  print(f"Camera index read from {filename}: {camera_index}")
+  cap = cv2.VideoCapture(camera_index)
   while cap.isOpened():
     success, frame = cap.read()
     if not success:
