@@ -73,6 +73,8 @@ def hands_detect(image):
     return pose, hand_landmark_origin
 
 def draw_hand_landmarks(image, hand_landmark):
+    # 確認影像是可寫的
+    image.setflags(write=1)
     mp_drawing.draw_landmarks(image, hand_landmark, mp_hands.HAND_CONNECTIONS)
     return image
 

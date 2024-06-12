@@ -7,6 +7,45 @@ import time
 import socket
 import logging
 import traceback
+import numpy as np
+
+
+def create_waiting_image(text="Waiting for camera to read", width=640, height=480, channels=3):
+  """
+  创建一个黑底白字的图像，显示指定的文字。
+
+  参数:
+      text (str): 要显示的文字，默认值为“等待攝影機讀取中”。
+      width (int): 图像的宽度，默认值为640。
+      height (int): 图像的高度，默认值为480。
+      channels (int): 图像的通道数，默认值为3（彩色图像）。
+
+  返回:
+      image (numpy.ndarray): 创建的图像。
+  """
+  # 创建一个黑色背景的图像
+  image = np.zeros((height, width, channels), dtype=np.uint8)
+
+  # 设置文字内容、字体、大小和颜色
+  font = cv2.FONT_HERSHEY_SIMPLEX
+  font_scale = 1
+  font_color = (255, 255, 255)  # 白色
+  font_thickness = 2
+
+  # 计算文字的尺寸
+  (text_width, text_height), baseline = cv2.getTextSize(text, font, font_scale, font_thickness)
+
+  # 计算文字的位置，使其居中
+  text_x = (width - text_width) // 2
+  text_y = (height + text_height) // 2
+
+  # 在图像上绘制文字
+  cv2.putText(image, text, (text_x, text_y), font, font_scale, font_color, font_thickness)
+
+  # 将图像左右镜像反转
+  mirrored_image = cv2.flip(image, 1)
+
+  return mirrored_image
 
 logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a+',
   format='[%(asctime)s %(levelname)-8s %(levelno)s] %(message)s',
@@ -14,7 +53,7 @@ logging.basicConfig(level=logging.INFO, filename='log.txt', filemode='a+',
   encoding='utf-8'
   )
 
-global_frame = ""
+global_frame = create_waiting_image()
 lock = threading.Lock()
 pose_dict = ["noPose", "SunRight", "SunLeft", "CloseLight", "WindRight", "WindLeft", "Pray", "WindForward"]
 
@@ -24,9 +63,19 @@ PORT = 11000
 is_connect = False
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+
+def read_camera_setting(filename):
+  with open(filename, 'r') as file:
+    return int(file.read().strip())
+
+
+
 def get_frame():
   global global_frame
-  cap = cv2.VideoCapture(0)
+  filename = 'camera_setting.txt'
+  camera_index = read_camera_setting(filename)
+  print(f"Camera index read from {filename}: {camera_index}")
+  cap = cv2.VideoCapture(camera_index)
   while cap.isOpened():
     success, frame = cap.read()
     if not success:
@@ -69,6 +118,7 @@ def test_connect():
         
 def detect_frame():
     global is_connect, s, global_frame
+
     # For webcam input:
     while True:
       try:
@@ -85,7 +135,7 @@ def detect_frame():
         pose, hand_landmark = hands_detect(image)
         if hand_landmark:
           image = draw_hand_landmarks(image, hand_landmark)
-        
+
         try:
           if is_connect :
             s.sendall(bytes(pose, encoding='utf-8'), )
@@ -104,7 +154,7 @@ def detect_frame():
 
         image = cv2.flip(image, 1)
         cv2.imshow('MediaPipe hands', image)
-       
+
         if cv2.waitKey(1) == ord('q'):
             break    # 按下 q 鍵停止
         print(pose)
@@ -117,11 +167,11 @@ def detect_frame():
 a = threading.Thread(target=get_frame)
 a.daemon=True
 a.start()
-time.sleep(2)
+time.sleep(1)
 b = threading.Thread(target=test_connect)
 b.daemon = True
 b.start()
-time.sleep(2)
+time.sleep(1)
 detect_frame()
 
 
